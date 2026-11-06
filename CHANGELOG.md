@@ -1,5 +1,14 @@
 # report-compare 变更记录
 
+## 2026-11-06：口径审员也不整份读 facts 和 data/
+- 同 stock-video 57号补丁二十·附二：任务书口径审员加"怎么读"（facts 用 facts_peek.py；data/ 按需查，报告先看目录索引和切好的段，不通读全文、不打印整份 csv / json）；文字方案模板口径审片说明同步。
+
+## 2026-11-06：画面员看 facts 也用 facts_peek.py
+- 同 stock-video 57号补丁二十·附：`templates/子代理任务书.md` 画面员"开工只读"里 facts.json 改为用 stock-video 的 `scripts/facts_peek.py` 看键名、值和说法，不整份读、不打印序列。
+
+## 2026-11-06：主控看 facts 用 facts_peek.py
+- 同 stock-video 57号补丁二十（起因：爱美客那期主控把整份 facts.json 打进对话、文字方案整份重写两次，烧掉半个 5 小时额度）：第 0 步主控规矩加一句——看 facts 只用 stock-video 的 `scripts/facts_peek.py`，不打印整份和序列；文字方案、故事.md 局部替换。脚本和终端输出收短都在 stock-video 里，本目录只改这一句。
+
 ## 2026-11-06：compare.py 潜伏崩溃修复
 - `signals()` 里 `def bridge()` 定义在第一次调用之后：「利润没变成现金」分支（盈利但经营现金流 < 净利润一半）引用时尚未定义，一触发就 NameError 崩。大悦城是亏损，走的是后面「亏损但经营现金为正」分支，试跑没暴露。→ 定义挪到两个调用点之前。合成数据回归：盈利现金差路径、亏损现金正路径（大悦城式）推算桥文本齐全，exit 0，py_compile 过。
 
