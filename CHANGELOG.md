@@ -1,5 +1,10 @@
 # report-compare 变更记录
 
+## 2026-11-06：compare.json 也不整份打印
+- 起因：主控写 facts.py 要从 data/compare.json（大悦城那期 2.9 万字节、531 个数）找数，口径审员任务书也写"先看 compare.json"，都没说怎么看，和爱美客整份打印 facts.json 是同一个坑。
+- 改动：SKILL 第 0 步那句扩到 compare.json（用 facts_peek.py 带前缀查，如 `利润表.营业收入`）；任务书口径审员改成"先看对比表.md，compare.json 带前缀查"。facts_peek 大数写全见 stock-video 补丁二十·附三。
+- 查过没问题、没改：`compare.py` 只打信号和基数提醒几行；`plan_check.py` 复用 stock-video 的（已收短）；`review_pack.py`、`fetch_reports.py`、`q_cut.py`、`facts_skeleton.py` 都只打一两行。`对比表.md`（1.7 万字节）是全片底稿，主控要读，不限。材料员任务书本来就写了先读目录索引、不通读全文。
+
 ## 2026-11-06：口径审员也不整份读 facts 和 data/
 - 同 stock-video 57号补丁二十·附二：任务书口径审员加"怎么读"（facts 用 facts_peek.py；data/ 按需查，报告先看目录索引和切好的段，不通读全文、不打印整份 csv / json）；文字方案模板口径审片说明同步。
 
