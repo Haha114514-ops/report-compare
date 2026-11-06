@@ -284,9 +284,6 @@ def signals(P, LY, PQ, YS, ci, ci_ly, cc, cc_ly, b, b_ly, b_ys, r, r_ly, qs):
         S('存货涨得比成本快', f'存货比去年同期末 {inv_g * 100:+.1f}%，营业成本同比 {cost_g * 100:+.1f}%',
           '附注存货构成（原材料 / 在产品 / 库存商品）、跌价准备；管理层是否说过备货')
     ocf, npf = cc.get('经营活动现金流净额'), ci.get('净利润')
-    if npf is not None and ocf is not None and npf > 0 and ocf < 0.5 * npf:
-        S('利润没变成现金', f'累计净利润 {yi(npf)} 亿，经营现金流 {yi(ocf)} 亿（{"负" if ocf < 0 else f"只有 {ocf / npf * 100:.0f}%"}）。{bridge()}',
-          '现金流量表直接法：销售收现 vs 购买商品付现；资产负债表应收、存货、预付、合同负债各变了多少')
     def bridge():   # 净利润 → 经营现金流：加回不走经营现金流的项目，剩下的才是营运资金（大悦城 2026Q3 口径审员推出来的桥）
         fin, imp_a = ci.get('财务费用') or 0, -(ci.get('资产减值（负数=损失）') or 0) - (ci.get('信用减值（负数=损失）') or 0)
         inv, gain = ci.get('投资收益') or 0, (ci.get('资产处置收益') or 0) + (ci.get('公允价值变动收益') or 0)
@@ -294,6 +291,9 @@ def signals(P, LY, PQ, YS, ci, ci_ly, cc, cc_ly, b, b_ly, b_ys, r, r_ly, qs):
         return (f'推算桥：净利润 {yi(npf)} + 财务费用 {yi(fin)}（付息在筹资）+ 减值 {yi(imp_a)}（不花钱）'
                 f' {("+ 投资亏损 " + yi(-inv)) if inv < 0 else ("- 投资收益 " + yi(inv))} {("+ 处置/公允亏损 " + yi(-gain)) if gain < 0 else ("- 处置/公允 " + yi(gain))}（钱在投资活动）≈ {yi(est)} 亿，和经营现金流差 {yi(ocf - est)} 亿是营运资金变动'
                 f'（存货 / 预收 / 应收 / 应付，看资产负债表比年初）')
+    if npf is not None and ocf is not None and npf > 0 and ocf < 0.5 * npf:
+        S('利润没变成现金', f'累计净利润 {yi(npf)} 亿，经营现金流 {yi(ocf)} 亿（{"负" if ocf < 0 else f"只有 {ocf / npf * 100:.0f}%"}）。{bridge()}',
+          '现金流量表直接法：销售收现 vs 购买商品付现；资产负债表应收、存货、预付、合同负债各变了多少')
     if npf is not None and ocf is not None and npf < 0 and ocf > 0:
         S('亏损但经营现金为正', f'累计净利润 {yi(npf)} 亿，经营现金流 {yi(ocf)} 亿。{bridge()}',
           '先看推算桥；剩下的营运资金按资产负债表比年初拆。别拿"付款比去年少"解释——那只解释同比，解释不了亏损时为什么是正的')
