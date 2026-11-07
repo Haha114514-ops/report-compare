@@ -4,7 +4,7 @@
     python plan_check.py <工程目录>     读 <工程>/文字方案.md、facts.json、data/compare.json，结果写 <工程>/plan_check.txt
 
 沿用 stock-video 的 plan_check（触发词、7 秒间隔、红线、未经审计、数字对账、重复念的数、强推断词、推算前提），
-把"公司一句话 / 生意那一拍"两条换成对比片自己的：
+留下 stock-video 的"公司一句话"（必须填；开场章没带到它的词 → 要核），去掉"生意那一拍"（对比片不讲全生意），加对比片自己的：
   必须改：
     - 总览没填"一句话定性"或"成绩单"（改善 / 恶化 / 不对劲各几条）
     - 三张表有一张在旁白里一个相关词都没有（对比片三张表都要讲变化）
@@ -34,9 +34,16 @@ QTR = r'单季|这一季|这个季度|(?<![前后])[一二三四]季度|第[一�
 NEXT = r'下一份|下个季度|下一季|年报|半年报|接下来看|下次看|盯'
 
 
+_business = P.business
+
+
 def rules(md, chs, lines):
     """替换 stock-video 的 business()：→ (必须改, 要核, 给作者看的)"""
-    must, check, show = [], [], []
+    # 公司一句话：开场念到公司名时带半句（同 stock-video 补丁十七）；"生意那一拍讲全"是个股拆解的，不要
+    bm, bc, bs = _business(md, chs, lines)
+    must = [x for x in bm if '生意那一拍' not in x]
+    check = [x for x in bc if '生意那一拍' not in x]
+    show = [x for x in bs if '生意那一拍' not in x]
     root = os.path.abspath(sys.argv[1])
     allv = ' '.join(s for rows in lines for s in rows)
 
@@ -89,8 +96,9 @@ def main():
     out = os.path.join(os.path.abspath(sys.argv[1]), 'plan_check.txt') if len(sys.argv) > 1 else None
     if out and os.path.exists(out):
         t = open(out, encoding='utf-8').read()
-        t = t.replace('## 公司做什么（作者对着看：外行听完知道它卖什么、给谁、怎么收钱吗）',
-                      '## 对比片：定性、成绩单、本期（作者对着看）')
+        old = '## 公司做什么（作者对着看：外行听完知道它卖什么、给谁、怎么收钱吗）'
+        if old not in t: print('（stock-video plan_check.txt 的小标题改了，本脚本第 %d 行跟着改）' % sys._getframe().f_lineno)
+        t = t.replace(old, '## 对比片：公司一句话、定性、成绩单、本期（作者对着看）')
         open(out, 'w', encoding='utf-8').write(t)
     return rc
 

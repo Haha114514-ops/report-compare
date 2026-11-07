@@ -34,6 +34,7 @@ def getter(df, date):
     """→ g(列名)：取不到 / 空值返回 None；这一期没有报表行时 g 恒为 None"""
     row = df.loc[date] if date in df.index else None
     def g(col):
+        g.asked.append(col)
         if row is None or col not in row.index: return None
         v = row[col]
         try:
@@ -41,8 +42,11 @@ def getter(df, date):
         except (TypeError, ValueError):
             return None
         return None if v != v else v
-    g.exists = row is not None
+    g.exists, g.asked = row is not None, []
     return g
+
+
+NOCOL = {}   # 科目 → 它要的列在 csv 里一个都没有（数据源改了列名，或这类公司没有这一科目）；不报的话表里静默成"—"、信号也不触发
 
 
 def add(*xs):
@@ -180,7 +184,12 @@ def year_start(date):
 
 def cum(df, items, date):
     g = getter(df, date)
-    return {n: (f(g) if g.exists else None) for n, f in items}
+    out = {}
+    for n, f in items:
+        g.asked = []
+        out[n] = f(g) if g.exists else None
+        if g.asked and not any(c in df.columns for c in g.asked): NOCOL[n] = sorted(set(g.asked))
+    return out
 
 
 def single(df, items, date):
@@ -427,6 +436,9 @@ def main():
     L += ['## 一、交叉检查信号（只是"要解释"，不是结论；每条在 故事.md 第三节写讲 / 不讲和理由）', '']
     L += [f'{i + 1}. **{s["信号"]}**：{s["数据"]}。去哪找原因：{s["去哪找原因"]}' for i, s in enumerate(sig)] or ['- 无']
     L += ['', '## 二、基数提醒', ''] + ([f'- {w}' for w in warn] or ['- 无'])
+    if NOCOL:
+        L += ['', '## 取不到的科目（csv 里没有这些列，下面表里是"—"；数据源改了列名就要改 compare.py 的科目表）', '']
+        L += [f'- {n}：{"、".join(c)}' for n, c in NOCOL.items()]
 
     def flow_table(title, items, c, c_ly, q, q_ly, q_pq, rr, rr_ly, rrq, rrq_ly, rrq_pq):
         T = ['', f'## {title}', '']
@@ -496,6 +508,7 @@ def main():
     print(f'{name} {P} {kind}：信号 {len(sig)} 条，基数提醒 {len(warn)} 条 → data/对比表.md、data/compare.json')
     for s in sig: print('  [信号] ' + s['信号'] + '：' + s['数据'])
     for w in warn: print('  [基数] ' + w)
+    if NOCOL: print(f'  [取不到] {len(NOCOL)} 个科目 csv 里没有对应的列（{"、".join(list(NOCOL)[:6])}{"…" if len(NOCOL) > 6 else ""}），见 对比表.md')
     return 0
 
 

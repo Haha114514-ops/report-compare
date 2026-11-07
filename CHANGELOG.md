@@ -1,5 +1,37 @@
 # report-compare 变更记录
 
+## 2026-11-07：模型按档位写，不写死模型名；去掉只在 Claude Code 成立的写法
+- 起因：用户要求规约能给不同的 AI 用。任务书第 4 行、SKILL 第 0 步写死了 `model: "sonnet"` 和"主控同款"；还有几处只在 Claude Code 成立（WebFetch、`.claude/skills` 路径）。
+- 原本想保证什么：照抄、照分镜做的活用便宜模型省额度，判断的活（主控、口径审员）不降档。意图不变，换成档位说法。
+- 改了：任务书开头、SKILL 第 0 步改成"材料员、画面员 = 执行档（平台上较便宜的模型）；主控、口径审员 = 判断档（平台上最强的模型）；平台不能选模型就全部默认"，各平台怎么选引用 stock-video 的平台对照表，不重抄。材料员"WebFetch 读不了"→"平台的网页读取工具一般读不了"。`scripts/sv.py`、`templates/facts_skeleton.py` 找技能目录时除 `.claude/skills` 外也找 `.opencode/skill(s)`（sv.py 另找 `~/.config/opencode/skill`）；SKILL"复用什么"同步。
+- 实测：sv.py 照常找到 stock-video；在 scratchpad 造一个只有 `.opencode/skill/report-compare` 入口（写"规约正本"）的工作区，骨架不设环境变量也能找到并生成 facts.json。grep sonnet / 主控同款 / WebFetch / SendMessage 已无。
+- 对齐：stock-video 补丁二十二（7f4edca）提交后，任务书和 SKILL 的档位措辞照它改（"当前平台上较便宜、较快的模型"），平台对照表直接指向 `<sv>/templates/子代理任务书.md` 开头那张；版本行改"基于补丁二十二"。
+- 没改：stock-video（由另一个会话改）。"子代理返工继续同一个"是各平台通用的说法，保留。
+
+## 2026-11-07：体检——跟 stock-video 补丁十七~二十一逐条核对、脚本实跑、同类 bug 一次改完
+- 起因：照搬 stock-video 分工以后只实跑过大悦城一期，没人整体查过。拿大悦城 000031 2026Q3 工程的副本把 fetch_reports → compare → facts.py → plan_check → review_pack 整条重跑，逐条对 stock-video 补丁十七~二十一。
+- **开场半句交代公司做什么（跟补丁十七）**
+  - 原本想保证什么：本技能"不专门介绍公司"是怕开场先讲一段"公司底子"拖慢；补丁十七要保证的是外行知道它卖什么、卖给谁，否则毛利率、存货、预收听不懂——两者不冲突，补丁十七本身也是"开场半句、不另起铺垫"。这里原来连半句都去掉了（故事模板写"不上片"，plan_check 把"公司一句话"检查整条换掉），大悦城那期开场就没说它卖房、收商场租金。
+  - 改了：SKILL 目标那条改成"不另起一段介绍公司，但开场带半句"；故事模板第零节"公司一句话"标明开场上片，第六节加一行；文字方案模板总览加"公司一句话"、自查加一条；`plan_check.py` 留用 stock-video 的"公司一句话"检查（没填 → 必须改；开场章没出现它的词 → 要核），只去掉"生意那一拍讲全"；材料员第 3 项照抄最近年报"主要业务""经营模式"；`review_pack.py` 自查第 1 问加"卖什么、卖给谁"。
+  - 没改：不加"生意那一拍"（对比片讲原因时带出业务就够）。
+  - 实测：大悦城旧方案 → 必须改 1 条（公司一句话没填）；填上"卖住宅和出租商场收租" → 要核 1 条（开场没带到），正是那期的缺口。
+- **其余几条补丁核过，已跟上**：时长不设上下限、只查注水（SKILL 第 3 步、模板总览和自查）；文字方案不等确认；facts / compare.json 用 facts_peek（实测 compare.json 带前缀，大数写全）；子代理 Sonnet 和两条新检查（审片包"念到的东西"一节就是 check_scenes，含写死的数、滚动前显示 0）；强调写法（模板第二节、画面员读 stock-video 第 4 步）。
+- **plan_check 表头一字不差认列（同类 bug，在 stock-video）**：stock-video 补丁十九·附把列按前缀认了，但"这一行是不是表头"仍是 `'旁白' in cells` 一字不差——作者把表头写成"旁白（逐句）"，整份方案一句都读不到，对比片会报"资产负债表、现金流量表没讲到""没说未经审计"三条假的必须改。修在 stock-video（见它的 CHANGELOG），本目录 plan_check 直接受益。grep 过两个技能所有脚本，只有这一处。
+- **中文报错乱码（stock-video）**：plan_check 到最后才把输出切 UTF-8，review_pack 从不切，Windows 下前面的报错和进度是乱码。修在 stock-video。
+- **`fetch_reports.py` 输出**：季报那行照抄 report_cut 的年报附注清单，"没切到 34 项（管理层讨论与分析、营业收入……）"——季报本来就没有这些，读 reports_log.json 的材料员会以为缺材料；终端只打前 160 字，后面真正有用的"季报切段 ✓"被截掉；akshare 的进度条每类打一行。→ 季报只留全文字数 + q_cut 结果；超长才截、注明"全文见 reports_log.json"；进度条收掉。实测四份报告各一行。
+- **`compare.py` 列名对不上时静默**：科目按东财列名一字不差取（`g('OPERATE_COST')`），列不在就当空值，表里是"—"、信号不触发，没有任何提示。→ 记下"要的列在 csv 里一个都没有"的科目，对比表.md 加"取不到的科目"一节，终端一行。大悦城 0 条（compare.json 和改前逐字相同）；把 OPERATE_COST、MINORITY_EQUITY 改名测试 → 报出营业成本、少数股东权益。
+- **大数缩写、整份打印**：grep 过 `:g`、`json.dumps`、`print(整份)`，本目录没有；对比表金额统一 `,.2f` 亿元，compare.json 原值写入。
+- **规约自洽**：版本行还写"基于 stock-video 补丁十八"→ 改二十一；第 4~6 步"完全按 stock-video 第 4、5、6 步"会让人去跑 stock-video 的 review_pack（自查问"为什么便宜"）→ 写明第 6 步换本目录的；红线第 2、4 条补齐 stock-video 的"不编管理层原话""推算前提随数字同步"；故事模板第三节说"plan_check 会查"，其实查的是文字方案里的信号处理表 → 写清；`review_pack.py` 原来写死 `review/` 目录，传 `--out` 时找不到审片包、自查问题不会换 → 认 `--out`；stock-video 的小标题改了时，plan_check / review_pack 替换落空现在会提示，不再静默。§ 引用、引用的脚本和参数（`--no-reports`、api_ref、骨架）都在。
+- **补丁一的教训复查**：`--period` 空格写法、"净流出 / 损失"叫法、两条新信号、推算桥、走势表的减值、`diff()` / `seg()`、对比片 review_pack——副本里都在、都对。补丁一"留给 stock-video"的四条：画面上的数——补丁二十一的"写死的数"已覆盖大半；瀑布图只能等间隔——这次在 stock-video 让 `fxplus.waterfall` 的 t0 能传列表，每根柱挂到旁白的词上（SKILL 画面建议同步一句）；字幕末条对口型误报、旁白数字按数值配到无关键——仍未改，要改 motion / plan_check 的匹配逻辑，留着。
+- 没改：大悦城工程和成片；compare.py 的信号阈值和对比表格式；近 8 季走势里一季度没计提减值显示"—"（数据源一季度给空值，不是 0，照实显示）。
+- 备份：改前整目录在会话 scratchpad `rc_backup`；本目录其实是 git 仓库（origin Haha114514-ops/report-compare），这次和之前几次同步的改动都还没提交。
+
+## 2026-11-07：跟 stock-video 补丁二十一——子代理换模型、两条脚本检查、强调写法
+- 起因：晨光 603899 对照实验，材料员、画面员换 Sonnet 后子代理部分省约 40%，质量靠脚本检查兜底；用户不喜欢金色色条上另贴亮金标签的"高亮"和手绘圈。本技能照搬 stock-video 的子代理分工，同步。
+- 原本想保证什么：画面数字只从 facts 来、改 facts 画面跟着变；观众知道"现在说的是哪个"。意图不变。
+- 改动：任务书开头写派发模型（材料员、画面员 `model: "sonnet"`，口径审员不换）；SKILL 第 0 步同一句。材料员：缺的报告先到巨潮按代码搜，拿不到才用别的来源、写明查过的路径。画面员规矩：check.txt 的"写死的数""滚动前显示0 / 滚动露长小数"要改。文字方案模板第二节加强调一行。
+- 不用改的：两条检查在 stock-video 的 `motion.check_scenes` 里，本目录 `review_pack.py` 调的就是它，审片包自动列出；强调写法（spotlight / focus / highlight / ring）在 stock-video 脚本里，本目录直接调用。
+
 ## 2026-11-06：compare.json 也不整份打印
 - 起因：主控写 facts.py 要从 data/compare.json（大悦城那期 2.9 万字节、531 个数）找数，口径审员任务书也写"先看 compare.json"，都没说怎么看，和爱美客整份打印 facts.json 是同一个坑。
 - 改动：SKILL 第 0 步那句扩到 compare.json（用 facts_peek.py 带前缀查，如 `利润表.营业收入`）；任务书口径审员改成"先看对比表.md，compare.json 带前缀查"。facts_peek 大数写全见 stock-video 补丁二十·附三。

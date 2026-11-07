@@ -10,19 +10,19 @@ sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
 
 def _find(name):
-    """找 skill 目录：环境变量 → 工作区 .claude/skills/<name> 往上找 → 和 report-compare 正本并排的目录"""
+    """找 skill 目录：环境变量 → <skill> → 往上找工作区技能目录（.claude/skills、.opencode/skill 等）里的 <name> 及其入口指向的正本"""
     env = os.environ.get({'stock-video': 'STOCK_VIDEO_SKILL', 'report-compare': 'REPORT_COMPARE_SKILL'}[name])
     cands = [env, r'<skill>' if name == 'report-compare' else None]
     d = os.path.dirname(os.path.abspath(__file__))
     while True:
-        e = os.path.join(d, '.claude', 'skills', name)
-        cands.append(e)
-        try:   # 工作区入口 SKILL.md 里写着"规约正本：`<路径>\SKILL.md`"
-            import re
-            m = re.search(r'规约正本：`([^`]+?)[\\/]SKILL\.md`', open(os.path.join(e, 'SKILL.md'), encoding='utf-8').read())
-            if m: cands.append(m.group(1))
-        except OSError:
-            pass
+        for sd in (('.claude', 'skills'), ('.opencode', 'skill'), ('.opencode', 'skills')):   # 各平台放技能的目录
+            e = os.path.join(d, *sd, name)
+            cands.append(e)
+            try:   # 工作区入口 SKILL.md 里写着"规约正本：`<路径>\SKILL.md`"
+                m = re.search(r'规约正本：`([^`]+?)[\\/]SKILL\.md`', open(os.path.join(e, 'SKILL.md'), encoding='utf-8').read())
+                if m: cands.append(m.group(1))
+            except OSError:
+                pass
         if os.path.dirname(d) == d: break
         d = os.path.dirname(d)
     for c in cands:

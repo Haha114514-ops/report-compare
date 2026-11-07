@@ -12,7 +12,7 @@
 产出：<工程>/data/reports/<标题>.pdf + 切好的段（见 stock-video report_cut.py）、reports_log.json
 季报没有附注，切出来主要是"主要会计数据、财务指标发生变动的情况及原因"和非经常性损益表——这是季报里公司自己解释变化的地方，先读。
 """
-import io, json, os, re, sys, time
+import contextlib, io, json, os, re, sys, time
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 import warnings; warnings.filterwarnings('ignore')
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -37,8 +37,9 @@ def listing(code):
     for cat in ('年报', '半年报', '一季报', '三季报'):
         for i in range(3):
             try:
-                d = ak.stock_zh_a_disclosure_report_cninfo(symbol=code, market='沪深京', category=cat,
-                                                           start_date=f'{y - 3}0101', end_date=time.strftime('%Y%m%d'))
+                with contextlib.redirect_stderr(io.StringIO()):   # akshare 的 tqdm 进度条每类一行，收掉
+                    d = ak.stock_zh_a_disclosure_report_cninfo(symbol=code, market='沪深京', category=cat,
+                                                               start_date=f'{y - 3}0101', end_date=time.strftime('%Y%m%d'))
                 break
             except Exception as e:
                 print('retry', cat, i, repr(e)[:120]); time.sleep(2 + 2 * i); d = None
@@ -70,7 +71,8 @@ def download(r, rdir, notes):
     res = report_cut.cut(pdf, rdir, title, notes)
     full = os.path.join(rdir, title + '_全文.txt')
     if r['期'][5:] in ('03-31', '09-30') and os.path.exists(full):   # 季报没有附注，按季报固定几节切
-        res += '；' + q_cut.cut(full)
+        # report_cut 按年报附注清单切，季报会列出 30 多项"没切到"——不是缺材料，只留全文字数，换成季报切段的结果
+        res = res.split(' / ')[0] + '；' + q_cut.cut(full)
     return res
 
 
@@ -106,7 +108,7 @@ def main():
         try:
             res = download(r, rdir, notes)
             log[role] = f'{p} {KIND[p[5:]]}：{r["标题"]}（{r["时间"]}）→ {res}'
-            print('ok', role, log[role][:160])
+            print('ok', role, log[role] if len(log[role]) <= 220 else log[role][:220] + '…（全文见 reports_log.json）')
         except Exception as e:
             log[role] = f'FAIL {p}: ' + repr(e)[:200]; print('fail', role, repr(e)[:200])
     json.dump(log, open(os.path.join(out, 'reports_log.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1)

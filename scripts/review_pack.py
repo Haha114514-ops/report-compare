@@ -16,7 +16,7 @@ R = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(R)   # stoc
 
 SELF = '''## 自查问题（作者对着本目录回答；对比片版）
 
-1. 只凭这部片写出：这份报告和去年同期、上一季比，一句话是变好还是变坏；成绩单每一条（改善 / 恶化 / 不对劲）的数、和什么比、为什么。哪条写不出来或写得含糊？
+1. 只凭这部片写出：这家公司卖什么、卖给谁（开场那半句）；这份报告和去年同期、上一季比，一句话是变好还是变坏；成绩单每一条（改善 / 恶化 / 不对劲）的数、和什么比、为什么。哪条写不出来或写得含糊？
 2. 每个变化，画面图角都写了和什么比（累计 vs 去年同期 / 单季，累计相减 / 比年初）吗？有没有一屏里累计和单季混着画？
 3. 画面上出现的每个数，facts.json 里都有吗？画面员为了"算平"补出来的柱子（"其他""报告没说"），标签说的原因有没有超出报告和推算？（旁白数字对账只查念出来的数，画面上的数要人看）
 4. "改善"背后有没有一次性收益、少提减值、去年基数低、持股比例变化撑着？片子说了没有？同比和环比是不是同一把尺子？
@@ -26,21 +26,25 @@ SELF = '''## 自查问题（作者对着本目录回答；对比片版）
 
 ## 口径复核（只核口径审片之后改过的句子；没改过就跳过。交回文字方案阶段的同一个口径审员）
 
-1. 改过的句子：累计 / 单季、和什么比、时间窗，和 facts 说法一致吗？
+1. 上面"旁白数字 ↔ facts 说法"逐行看：改过的句子，累计 / 单季、和什么比、时间窗，和 facts 说法一致吗？季报的数说了"未经审计"吗？
 2. 推测念了"可能 / 推测"吗？推算的前提念全了吗，和画面角注是同一句吗？
 3. 有没有说过头：单一归因、"恶化"说成"危机"、"改善"说成"反转"、像买卖建议？
 '''
 
 
 def main():
-    root = os.path.abspath(sys.argv[1]) if len(sys.argv) > 1 else None   # 先算：stock-video 的 review_pack 会切工作目录
+    a = sys.argv[1:]
+    root = os.path.abspath(a[0]) if a else None   # 先算：stock-video 的 review_pack 会切工作目录
+    out = os.path.abspath(a[a.index('--out') + 1]) if '--out' in a else (os.path.join(root, 'review') if root else None)
     rc = R.main()
-    p = os.path.join(root, 'review', '审片包.md') if root else None
+    p = os.path.join(out, '审片包.md') if out else None
     if p and os.path.exists(p):
         t = open(p, encoding='utf-8').read()
         i = t.find('## 自查问题')
         if i >= 0:
             open(p, 'w', encoding='utf-8').write(t[:i] + SELF)
+        else:
+            print('审片包里没找到"## 自查问题"：stock-video review_pack 的小标题改了，自查问题没换成对比片版')
     return rc
 
 
